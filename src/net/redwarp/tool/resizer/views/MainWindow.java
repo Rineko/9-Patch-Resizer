@@ -55,7 +55,7 @@ public class MainWindow extends JFrame {
     private final Action action = new SwingAction();
 
     public MainWindow() {
-        this.setSize(new Dimension(500, 370));
+        this.setSize(new Dimension(600, 520));
         this.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
         this.setTitle(Localization.get("app_name"));
 
@@ -88,7 +88,7 @@ public class MainWindow extends JFrame {
         this.inputPanel.setPreferredSize(new Dimension(10, 140));
         this.getContentPane().add(this.inputPanel, "input");
 
-        this.xhdpiButton = new JButton(String.format(Locale.getDefault(), Localization.get("xhdpi"), ScreenDensity.getDefaultInputDensity().getName()));
+        this.xhdpiButton = new JButton(String.format(Locale.getDefault(), Localization.get("xhdpi"), ScreenDensity.getDefaultInputDensity()));
         this.xhdpiButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent arg0) {
@@ -112,15 +112,15 @@ public class MainWindow extends JFrame {
         JLabel inputLabel = new JLabel(Localization.get("input_density"));
         inputLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
         optionPanel.add(inputLabel);
-        JComboBox<ScreenDensity> inputDensityChoice = new JComboBox<ScreenDensity>(new Vector<ScreenDensity>(ScreenDensity.getSupportedScreenDensity()));
+        JComboBox<String> inputDensityChoice = new JComboBox<String>(ScreenDensity.getSupportedInputDensities());
         inputDensityChoice.setSelectedItem(ScreenDensity.getDefaultInputDensity());
         inputDensityChoice.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent actionEvent) {
                 JComboBox box = (JComboBox) actionEvent.getSource();
-                ScreenDensity selectedDensity = (ScreenDensity) box.getSelectedItem();
+                String selectedDensity = (String) box.getSelectedItem();
                 ScreenDensity.setDefaultInputDensity(selectedDensity);
-                xhdpiButton.setText(String.format(Locale.getDefault(), Localization.get("xhdpi"), selectedDensity.getName()));
+                xhdpiButton.setText(String.format(Locale.getDefault(), Localization.get("xhdpi"), selectedDensity));
             }
         });
         inputDensityChoice.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -130,9 +130,9 @@ public class MainWindow extends JFrame {
         optionPanel.add(inputDensityChoice);
         optionPanel.add(Box.createVerticalGlue());
 
-        JLabel outputLabel = new JLabel(Localization.get("output_density"));
+        JLabel outputLabel = new JLabel(Localization.get("output_density_android"));
         optionPanel.add(outputLabel);
-        for (final ScreenDensity density : ScreenDensity.getSupportedScreenDensity()) {
+        for (final ScreenDensity density : ScreenDensity.getSupportedAndroidScreenDensity()) {
             final JCheckBox box = new JCheckBox(density.getName());
             box.addActionListener(new ActionListener() {
                 @Override
@@ -144,6 +144,36 @@ public class MainWindow extends JFrame {
             box.setAlignmentX(Component.LEFT_ALIGNMENT);
             optionPanel.add(box);
         }
+        optionPanel.add(Box.createVerticalGlue());
+
+        JLabel outputLabel2 = new JLabel(Localization.get("output_density_ios"));
+        optionPanel.add(outputLabel2);
+        for (final ScreenDensity density : ScreenDensity.getSupportediOSScreenDensity()) {
+            final JCheckBox box = new JCheckBox(density.getName());
+            box.addActionListener(new ActionListener() {
+                @Override
+                public void actionPerformed(ActionEvent actionEvent) {
+                    density.setActive(box.isSelected());
+                }
+            });
+            box.setSelected(density.isActive());
+            box.setAlignmentX(Component.LEFT_ALIGNMENT);
+            optionPanel.add(box);
+        }
+        optionPanel.add(Box.createVerticalGlue());
+
+        JLabel outputLabel3 = new JLabel(Localization.get("output_assets"));
+        optionPanel.add(outputLabel3);
+        final JCheckBox box = new JCheckBox(Localization.get("output_assets_ios"));
+        box.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent actionEvent) {
+                //TODO
+            }
+        });
+        box.setSelected(ScreenDensity.isSaveiOSAssetsEnabled());
+        box.setAlignmentX(Component.LEFT_ALIGNMENT);
+        optionPanel.add(box);
         optionPanel.add(Box.createVerticalGlue());
 
         final JButton saveButton = new JButton(Localization.get("save"));
@@ -183,7 +213,7 @@ public class MainWindow extends JFrame {
             public void filesDropped(Container source, File[] files) {
                 for (File input : files) {
                     String name = input.getName().toLowerCase();
-                    if (name.endsWith(".png") || name.endsWith(".jpg")) {
+                    if (name.endsWith(".png") || name.endsWith(".jpg") || name.endsWith(".jpeg")) {
                         MainWindow.this.mntmClear.setEnabled(true);
                         CardLayout layout = (CardLayout) MainWindow.this
                                 .getContentPane().getLayout();
@@ -192,7 +222,8 @@ public class MainWindow extends JFrame {
                         MainWindow.this.resultTable.addOperation(operation);
 
                         ImageScaler scaler = new ImageScaler(operation,
-                                ScreenDensity.getDefaultInputDensity()) {
+                                ScreenDensity.getDefaultInputDensityAsFloat(),
+                                ScreenDensity.isSaveiOSAssetsEnabled()) {
                             @Override
                             protected void process(
                                     java.util.List<Operation> chunks) {

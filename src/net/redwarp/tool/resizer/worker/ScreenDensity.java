@@ -25,16 +25,23 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class ScreenDensity {
-    private static final String KEY_DENSITIES = "densities";
+    private static final String KEY_DENSITIES_ANDROID = "densitiesAndroid";
+    private static final String KEY_DENSITIES_IOS = "densitiesiOS";
+    private static final String KEY_INPUT_DENSITIES = "inputDensities";
     private static final String KEY_SOURCE = "source";
-    public static final String DENSITIES_PATHNAME = "./densities.json";
+    private static final String KEY_ENABLE_ASSETS = "exportiOSAssets";
+    public static final String DENSITIES_PATHNAME = System.getProperty("user.home") + "/.resizer";
     private float scale;
     private String name;
+    private String os;
 
     private boolean active;
 
-    private static List<ScreenDensity> list = null;
-    private static ScreenDensity defaultInputDensity = null;
+    private static List<String> inputDensities = null;
+    private static List<ScreenDensity> listAndroid = null;
+    private static List<ScreenDensity> listiOS = null;
+    private static float defaultInputDensity = 4f;
+    private static boolean isSaveiOSAssetsEnabled = true;
 
     static {
         load();
@@ -46,30 +53,47 @@ public class ScreenDensity {
             JsonParser parser = new JsonParser();
             InputStream preferenceStream;
             try {
-                preferenceStream = new FileInputStream(new File(DENSITIES_PATHNAME));
+            	File folder = new File(DENSITIES_PATHNAME);
+            	if (!folder.exists()) {
+            		folder.mkdirs();
+            	}
+            	File file = new File(folder, "densities.json");
+                preferenceStream = new FileInputStream(file);
             } catch (Exception e) {
                 preferenceStream = ScreenDensity.class.getClassLoader().getResourceAsStream("misc/densities.json");
             }
             JsonObject densitiesObject = parser.parse(new InputStreamReader(preferenceStream)).getAsJsonObject();
-            JsonArray densitiesArray = densitiesObject.get(KEY_DENSITIES).getAsJsonArray();
+            JsonArray inputDensitiesArray = densitiesObject.get(KEY_INPUT_DENSITIES).getAsJsonArray();
+            JsonArray densitiesAndroidArray = densitiesObject.get(KEY_DENSITIES_ANDROID).getAsJsonArray();
+            JsonArray densitiesiOSArray = densitiesObject.get(KEY_DENSITIES_IOS).getAsJsonArray();
 
+            Type inputType = new TypeToken<List<String>>() {
+            }.getType();
             Type listType = new TypeToken<List<ScreenDensity>>() {
             }.getType();
-            list = gson.fromJson(densitiesArray, listType);
+            inputDensities = gson.fromJson(inputDensitiesArray, inputType);
+            listAndroid = gson.fromJson(densitiesAndroidArray, listType);
+            listiOS = gson.fromJson(densitiesiOSArray, listType);
             String defaultDensityName = densitiesObject.get(KEY_SOURCE).getAsString();
-            for (ScreenDensity density : list) {
-                if (density.getName().equals(defaultDensityName)) {
-                    defaultInputDensity = density;
-                    break;
-                }
-            }
-            if (defaultInputDensity == null) {
-                defaultInputDensity = list.get(0);
-            }
+            defaultInputDensity = Float.parseFloat(defaultDensityName.replace("x", ""));
+            isSaveiOSAssetsEnabled = densitiesObject.get(KEY_ENABLE_ASSETS).getAsBoolean();
+            
         } catch (Exception e) {
-            list = new ArrayList<ScreenDensity>();
-            list.add(new ScreenDensity("xhdpi", 2.0f, true));
-            defaultInputDensity = list.get(0);
+        	e.printStackTrace();
+            listAndroid = new ArrayList<ScreenDensity>();
+            listiOS = new ArrayList<ScreenDensity>();
+            //default values
+            inputDensities.add("4x");
+            listAndroid.add(new ScreenDensity("xxxhdpi", 4.0f, true));
+            listAndroid.add(new ScreenDensity("xxhdpi", 3.0f, true));
+            listAndroid.add(new ScreenDensity("xhdpi", 2.0f, true));
+            listAndroid.add(new ScreenDensity("hdpi", 1.5f, true));
+            listAndroid.add(new ScreenDensity("mdpi", 1.0f, true));
+            listiOS.add(new ScreenDensity("@3x", 3.0f, true));
+            listiOS.add(new ScreenDensity("@2x", 2.0f, true));
+            listiOS.add(new ScreenDensity("@1x", 1.0f, true));
+            defaultInputDensity = 4.0f;
+            isSaveiOSAssetsEnabled = true;
         }
     }
 
@@ -77,14 +101,21 @@ public class ScreenDensity {
         saveButton.setEnabled(false);
         JsonObject rootObject = new JsonObject();
         // Save source
-        rootObject.addProperty(KEY_SOURCE, defaultInputDensity.getName());
+        rootObject.addProperty(KEY_SOURCE, getDefaultInputDensity());
 
         // Save densities
         Gson gson = new Gson();
         Type listOfDensityType = new TypeToken<List<ScreenDensity>>() {
         }.getType();
-        JsonElement densities = gson.toJsonTree(list, listOfDensityType);
-        rootObject.add(KEY_DENSITIES, densities);
+        JsonElement inputDens = gson.toJsonTree(inputDensities, listOfDensityType);
+        rootObject.add(KEY_INPUT_DENSITIES, inputDens);
+        JsonElement densitiesAndroid = gson.toJsonTree(listAndroid, listOfDensityType);
+        rootObject.add(KEY_DENSITIES_ANDROID, densitiesAndroid);
+        JsonElement densitiesiOS = gson.toJsonTree(listiOS, listOfDensityType);
+        rootObject.add(KEY_DENSITIES_IOS, densitiesiOS);
+        
+        //Assets
+        rootObject.addProperty(KEY_ENABLE_ASSETS, isSaveiOSAssetsEnabled());
 
         SaveWorker worker = new SaveWorker(saveButton, rootObject.toString());
         worker.execute();
@@ -105,20 +136,50 @@ public class ScreenDensity {
         return this.name;
     }
 
+    public String getOs() {
+        return this.os;
+    }
+
     public float getScale() {
         return this.scale;
     }
 
-    public static List<ScreenDensity> getSupportedScreenDensity() {
-        return list;
+    public static String[] getSupportedInputDensities() {
+    	String[] s = new String[inputDensities.size()];
+    	int i = 0;
+    	for	(String id : inputDensities) {
+    		s[i] = id;
+    		i++;
+    	}
+        return s;
     }
 
-    public static ScreenDensity getDefaultInputDensity() {
+    public static List<ScreenDensity> getSupportedAndroidScreenDensity() {
+        return listAndroid;
+    }
+
+    public static List<ScreenDensity> getSupportediOSScreenDensity() {
+        return listiOS;
+    }
+
+    public static String getDefaultInputDensity() {
+        return String.format("%1.0fx", Float.valueOf(defaultInputDensity));
+    }
+
+    public static float getDefaultInputDensityAsFloat() {
         return defaultInputDensity;
     }
 
-    public static void setDefaultInputDensity(ScreenDensity density) {
-        defaultInputDensity = density;
+	public static void setDefaultInputDensity(String density) {
+        defaultInputDensity = Float.parseFloat(density.replace("x", ""));
+    }
+
+    public static boolean isSaveiOSAssetsEnabled() {
+        return isSaveiOSAssetsEnabled;
+    }
+
+	public static void setSaveiOSAssetsEnabled(boolean enabled) {
+		isSaveiOSAssetsEnabled = enabled;
     }
 
     @Override
@@ -152,7 +213,12 @@ public class ScreenDensity {
         protected Void doInBackground() throws Exception {
             FileOutputStream fos = null;
             try {
-                fos = new FileOutputStream(DENSITIES_PATHNAME);
+            	File folder = new File(DENSITIES_PATHNAME);
+            	if (!folder.exists()) {
+            		folder.mkdirs();
+            	}
+            	File file = new File(folder, "densities.json");
+                fos = new FileOutputStream(file);
                 PrintWriter writer = new PrintWriter(fos);
                 writer.write(mSavePayload);
 

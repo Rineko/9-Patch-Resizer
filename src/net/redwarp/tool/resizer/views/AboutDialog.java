@@ -27,7 +27,7 @@ public class AboutDialog extends JDialog {
 
     public AboutDialog(JFrame parent) {
         this.setResizable(false);
-        this.setSize(new Dimension(400, 250));
+        this.setSize(new Dimension(430, 270));
         this.getContentPane().setLayout(new BorderLayout(0, 0));
 
         JLabel lblResizer = new JLabel(Localization.get("app_name") + " "
@@ -37,6 +37,7 @@ public class AboutDialog extends JDialog {
         lblResizer.setIconTextGap(10);
         lblResizer.setFont(lblResizer.getFont().deriveFont(
                 lblResizer.getFont().getStyle() | Font.BOLD, 16f));
+        lblResizer.setBackground(Color.WHITE);
         lblResizer.setIcon(new ImageIcon(AboutDialog.class
                 .getResource("/img/icon_64.png")));
         this.getContentPane().add(lblResizer, BorderLayout.NORTH);
@@ -44,12 +45,13 @@ public class AboutDialog extends JDialog {
         JTextArea txtrResizerIsA = new JTextArea();
         txtrResizerIsA.setEditable(false);
         txtrResizerIsA.setWrapStyleWord(true);
-        txtrResizerIsA.setBorder(new EmptyBorder(0, 10, 10, 10));
+        txtrResizerIsA.setBorder(new EmptyBorder(0, 20, 20, 20));
         txtrResizerIsA.setFont(UIManager.getFont("Label.font"));
+        txtrResizerIsA.setBackground(Color.WHITE);
         txtrResizerIsA.setLineWrap(true);
         txtrResizerIsA.setText(Localization.get("about_text"));
-        txtrResizerIsA.setBackground(new Color(0, 0, 0, 0));
         this.getContentPane().add(txtrResizerIsA, BorderLayout.CENTER);
+        this.getContentPane().setBackground(Color.WHITE);
 
         this.setLocationRelativeTo(parent);
     }

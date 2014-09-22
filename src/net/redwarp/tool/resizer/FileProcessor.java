@@ -41,7 +41,8 @@ public class FileProcessor {
 			Operation operation = new Operation(new File(name));
 
 			scaler = new ImageScaler(operation,
-					ScreenDensity.getDefaultInputDensity()) {
+					ScreenDensity.getDefaultInputDensityAsFloat(),
+					ScreenDensity.isSaveiOSAssetsEnabled()) {
 				@Override
 				protected void process(java.util.List<Operation> chunks) {
 					for (Operation operation : chunks) {

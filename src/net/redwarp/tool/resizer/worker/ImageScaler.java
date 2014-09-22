@@ -21,13 +21,25 @@ import net.redwarp.tool.resizer.table.OperationStatus;
 
 import javax.imageio.ImageIO;
 import javax.swing.*;
+
+import com.google.gson.Gson;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
+import com.google.gson.reflect.TypeToken;
+
 import java.awt.*;
 import java.awt.RenderingHints.Key;
 import java.awt.image.BufferedImage;
 import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.PrintWriter;
+import java.lang.reflect.Type;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -35,17 +47,20 @@ import java.util.concurrent.Executors;
 public class ImageScaler extends SwingWorker<Void, Operation> {
     private File inputFile;
     private Operation operation;
-    private ScreenDensity inputDensity;
+    private float inputDensity;
+    private boolean exportiOSImageAssets;
     private static ExecutorService executor = Executors
             .newFixedThreadPool(Runtime.getRuntime().availableProcessors());
     private static Object fileLock = new Object();
     private static Object folderLock = new Object();
 
     public ImageScaler(final Operation operation,
-                       final ScreenDensity inputDensity) {
+                       final float inputDensity,
+                       final boolean exportiOSImageAssets) {
         this.operation = operation;
         this.inputFile = operation.getFile();
         this.inputDensity = inputDensity;
+        this.exportiOSImageAssets = exportiOSImageAssets;
     }
 
     @Override
@@ -64,49 +79,110 @@ public class ImageScaler extends SwingWorker<Void, Operation> {
 
             this.operation.setStatus(OperationStatus.IN_PROGRESS);
             this.publish(this.operation);
+            
 
-            List<ScreenDensity> densityList = ScreenDensity
-                    .getSupportedScreenDensity();
+
+            String name;
+            int extensionPos = this.inputFile.getName().lastIndexOf('.');
+            if (extensionPos != -1) {
+                name = this.inputFile.getName().substring(0, extensionPos);
+            } else {
+                name = this.inputFile.getName();
+            }
+            
+            if (name.length() == 0) {
+            	//if empty name, ignore
+                this.operation.setStatus(OperationStatus.ERROR,
+                        Localization.get("error_wrong_png"));
+                this.publish(this.operation);
+                return null;
+            }
+            
+            //Normalize name of drawables
+            //replace dashes and spaces with underscore
+            name = name.replace("-", "_");
+            name = name.replace(" ", "_");
+            //to lowercase
+            name = name.toLowerCase(Locale.getDefault());
+            //if it starts with number, add underscore
+            if (Character.isDigit(name.charAt(0))) {
+            	name = "_" + name;
+            }
+
+            List<ScreenDensity> densityListAndroid = ScreenDensity
+                    .getSupportedAndroidScreenDensity();
+
+            List<ScreenDensity> densityListiOS = ScreenDensity
+                    .getSupportediOSScreenDensity();
+
+            List<ScreenDensity> densityList = new ArrayList<ScreenDensity>();
+            densityList.addAll(densityListAndroid);
+            densityList.addAll(densityListiOS);
+            
+            List<ScreenDensity> densitiesForImageAssets = new ArrayList<ScreenDensity>();
 
             File parent = this.inputFile.getParentFile();
             for (ScreenDensity density : densityList) {
                 if (density.isActive() == false) {
                     continue;
                 }
-                File outputFolder;
-
+                    
+                boolean isIOSDensity;
+                
+                File outputFolder = null;
+                File outputFile = null;
+                File assetsOutputFolder = null;
+                File assetsOutputFile = null;
+                
+                String fullName = null;
+                
                 synchronized (folderLock) {
-                    outputFolder = new File(parent, "drawable-"
-                            + density.getName());
-                    if (!outputFolder.exists()) {
-                        outputFolder.mkdir();
+                	if ((isIOSDensity = "ios".equalsIgnoreCase(density.getOs()))) {
+                		fullName = name + (density.getScale() == 1f?"":density.getName()) + ".png";
+                        outputFolder = new File(parent.getAbsolutePath() + "/PNG/iOS/"
+                                + density.getName().replace("@", ""));
+                        assetsOutputFolder = new File(parent, "PNG/iOS/Images.xcassets/" + name + ".imageset");
+                        
+                	} else {
+                		fullName = name + ".png";
+                        outputFolder = new File(parent.getAbsolutePath() + "/PNG/Android/drawable-"
+                                + density.getName());
+                	}
+                	
+                    if (outputFolder != null) {
+                    	if (!outputFolder.exists()) {
+                            outputFolder.mkdirs();
+                    	}
+
+                        outputFile = new File(outputFolder, fullName);
+                        if (outputFile.exists()) {
+                            outputFile.delete();
+                        }
+                    }
+                    
+                    if (assetsOutputFolder != null) {
+                    	if (!assetsOutputFolder.exists()) {
+                        	assetsOutputFolder.mkdirs();
+                    	}
+                    	
+                    	assetsOutputFile = new File(assetsOutputFolder, fullName);
+                        if (assetsOutputFile.exists()) {
+                        	assetsOutputFile.delete();
+                        }
                     }
                 }
-
-                String name;
-                int extensionPos = this.inputFile.getName().lastIndexOf('.');
-                if (extensionPos != -1) {
-                    name = this.inputFile.getName().substring(0, extensionPos)
-                            + ".png";
-                } else {
-                    name = this.inputFile.getName();
+                
+                if (isIOSDensity) {
+                	densitiesForImageAssets.add(density);
                 }
-
-                File outputFile = new File(outputFolder, name);
-                if (outputFile.exists()) {
-                    outputFile.delete();
-                }
-
-                // if (density.equals(this.inputDensity)) {
-                // FileTools.copyfile(this.inputFile, outputFile);
-                // } else {
 
                 BufferedImage outputImage;
                 if (this.inputFile.getName().endsWith(".9.png")) {
+                	//process 9-patch drawable
                     BufferedImage trimedImage = this.trim9PBorder(inputImage);
 
                     float ratio = density.getScale()
-                            / this.inputDensity.getScale();
+                            / this.inputDensity;
                     trimedImage = this.rescaleImage(trimedImage,
                             (int) (ratio * trimedImage.getWidth()),
                             (int) (ratio * trimedImage.getHeight()));
@@ -133,18 +209,22 @@ public class ImageScaler extends SwingWorker<Void, Operation> {
 
                     outputImage = borderImage;
                 } else {
-
+                	//regular drawable
                     float ratio = density.getScale()
-                            / this.inputDensity.getScale();
+                            / this.inputDensity;
                     outputImage = this.rescaleImage(inputImage,
                             (int) (ratio * inputImage.getWidth()),
                             (int) (ratio * inputImage.getHeight()));
                 }
 
                 try {
-
                     synchronized (fileLock) {
-                        ImageIO.write(outputImage, "png", outputFile);
+                    	if (outputFile != null) {
+                    		ImageIO.write(outputImage, "png", outputFile);
+                    	}
+                    	if (assetsOutputFile != null) {
+                    		ImageIO.write(outputImage, "png", assetsOutputFile);
+                    	}
                     }
 
                 } catch (IOException e) {
@@ -153,7 +233,45 @@ public class ImageScaler extends SwingWorker<Void, Operation> {
                     return null;
                 }
             }
-            // }
+            
+            //Once all image assets images are written, generate the Contents.json file
+            if (this.exportiOSImageAssets && !densitiesForImageAssets.isEmpty()) {
+            	//TODO
+                JsonObject rootObject = new JsonObject();
+
+                JsonObject infoObject = new JsonObject();
+                infoObject.addProperty("version", 1);
+                infoObject.addProperty("author", "xcode");
+                
+                rootObject.add("info", infoObject);
+                
+                JsonArray imagesArray = new JsonArray();
+            	
+            	for	(ScreenDensity density : densitiesForImageAssets) {
+            		ImageAsset asset = ImageAsset.imageAssetFromScreenDensity(density, name);
+            		imagesArray.add(asset.toJsonObject());
+            	}
+                
+                rootObject.add("images", imagesArray);
+                
+                FileOutputStream fos = null;
+                try {
+                    fos = new FileOutputStream(parent.getAbsolutePath() 
+                    		+ "/PNG/iOS/Images.xcassets/"
+                    		+ name 
+                    		+ ".imageset/Contents.json");
+                    PrintWriter writer = new PrintWriter(fos);
+                    writer.write(rootObject.toString());
+
+                    writer.close();
+                } catch (FileNotFoundException e) {
+                    e.printStackTrace();
+                    System.out.println("Couldn't save");
+                }
+            }
+            
+            
+            
             this.operation.setStatus(OperationStatus.FINISH);
             this.publish(this.operation);
         } catch (IOException e) {
