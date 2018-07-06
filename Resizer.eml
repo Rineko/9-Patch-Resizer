@@ -1,8 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<component inheritJdk="true">
-	<exclude-output/>
-	<contentEntry url="file://$MODULE_DIR$"/>
+<component LANGUAGE_LEVEL="JDK_1_7" inheritJdk="true">
+	<output-test url="file://$MODULE_DIR$/target/test-classes"/>
+	<contentEntry url="file://$MODULE_DIR$">
+		<excludeFolder url="file://$MODULE_DIR$/target"/>
+	</contentEntry>
+	<lib name="Maven: junit:junit:4.11" scope="TEST"/>
+	<lib name="Maven: org.hamcrest:hamcrest-core:1.3" scope="TEST"/>
 	<levels>
 		<level name="gson-2.2.4" value="project"/>
+		<level name="Maven: junit:junit:4.11" value="project"/>
+		<level name="Maven: org.hamcrest:hamcrest-core:1.3" value="project"/>
+		<level name="Maven: com.google.code.gson:gson:2.8.5" value="project"/>
 	</levels>
 </component>
