@@ -21,26 +21,13 @@ import net.redwarp.tool.resizer.table.OperationStatus;
 
 import javax.imageio.ImageIO;
 import javax.swing.*;
-
-import com.google.gson.Gson;
-import com.google.gson.JsonArray;
-import com.google.gson.JsonObject;
-import com.google.gson.reflect.TypeToken;
-
 import java.awt.*;
 import java.awt.RenderingHints.Key;
 import java.awt.image.BufferedImage;
 import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.PrintWriter;
-import java.lang.reflect.Type;
-import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.*;
 import java.util.List;
-import java.util.Locale;
-import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -104,10 +91,6 @@ public class ImageScaler extends SwingWorker<Void, Operation> {
             name = name.replace(" ", "_");
             //to lowercase
             name = name.toLowerCase(Locale.getDefault());
-            //if it starts with number, add underscore
-            if (Character.isDigit(name.charAt(0))) {
-            	name = "_" + name;
-            }
 
             List<ScreenDensity> densityListAndroid = ScreenDensity
                     .getSupportedAndroidScreenDensity();
@@ -138,15 +121,13 @@ public class ImageScaler extends SwingWorker<Void, Operation> {
                 
                 synchronized (folderLock) {
                 	if ((isIOSDensity = "ios".equalsIgnoreCase(density.getOs()))) {
-                		fullName = name + (density.getScale() == 1f?"":density.getName()) + ".png";
-                        outputFolder = new File(parent.getAbsolutePath() + "/PNG/iOS/"
+                		fullName = name + ".png";
+                        outputFolder = new File(parent.getAbsolutePath() + "/PNG/"
                                 + density.getName().replace("@", ""));
-                        assetsOutputFolder = new File(parent, "PNG/iOS/Images.xcassets/" + name + ".imageset");
                         
                 	} else {
                 		fullName = name + ".png";
-                        outputFolder = new File(parent.getAbsolutePath() + "/PNG/Android/drawable-"
-                                + density.getName());
+                        outputFolder = new File(parent.getAbsolutePath() + "/PNG/" + density.getName());
                 	}
                 	
                     if (outputFolder != null) {
@@ -233,45 +214,7 @@ public class ImageScaler extends SwingWorker<Void, Operation> {
                     return null;
                 }
             }
-            
-            //Once all image assets images are written, generate the Contents.json file
-            if (this.exportiOSImageAssets && !densitiesForImageAssets.isEmpty()) {
-            	//TODO
-                JsonObject rootObject = new JsonObject();
 
-                JsonObject infoObject = new JsonObject();
-                infoObject.addProperty("version", 1);
-                infoObject.addProperty("author", "xcode");
-                
-                rootObject.add("info", infoObject);
-                
-                JsonArray imagesArray = new JsonArray();
-            	
-            	for	(ScreenDensity density : densitiesForImageAssets) {
-            		ImageAsset asset = ImageAsset.imageAssetFromScreenDensity(density, name);
-            		imagesArray.add(asset.toJsonObject());
-            	}
-                
-                rootObject.add("images", imagesArray);
-                
-                FileOutputStream fos = null;
-                try {
-                    fos = new FileOutputStream(parent.getAbsolutePath() 
-                    		+ "/PNG/iOS/Images.xcassets/"
-                    		+ name 
-                    		+ ".imageset/Contents.json");
-                    PrintWriter writer = new PrintWriter(fos);
-                    writer.write(rootObject.toString());
-
-                    writer.close();
-                } catch (FileNotFoundException e) {
-                    e.printStackTrace();
-                    System.out.println("Couldn't save");
-                }
-            }
-            
-            
-            
             this.operation.setStatus(OperationStatus.FINISH);
             this.publish(this.operation);
         } catch (IOException e) {
