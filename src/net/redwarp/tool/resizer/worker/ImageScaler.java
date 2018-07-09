@@ -15,8 +15,6 @@
  */
 package net.redwarp.tool.resizer.worker;
 
-import com.google.gson.JsonArray;
-import com.google.gson.JsonObject;
 import net.redwarp.tool.resizer.misc.Localization;
 import net.redwarp.tool.resizer.table.Operation;
 import net.redwarp.tool.resizer.table.OperationStatus;
@@ -26,7 +24,8 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.RenderingHints.Key;
 import java.awt.image.BufferedImage;
-import java.io.*;
+import java.io.File;
+import java.io.IOException;
 import java.util.*;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
@@ -215,45 +214,7 @@ public class ImageScaler extends SwingWorker<Void, Operation> {
                     return null;
                 }
             }
-            
-            //Once all image assets images are written, generate the Contents.json file
-            if (this.exportiOSImageAssets && !densitiesForImageAssets.isEmpty()) {
-            	//TODO
-                JsonObject rootObject = new JsonObject();
 
-                JsonObject infoObject = new JsonObject();
-                infoObject.addProperty("version", 1);
-                infoObject.addProperty("author", "xcode");
-                
-                rootObject.add("info", infoObject);
-                
-                JsonArray imagesArray = new JsonArray();
-            	
-            	for	(ScreenDensity density : densitiesForImageAssets) {
-            		ImageAsset asset = ImageAsset.imageAssetFromScreenDensity(density, name);
-            		imagesArray.add(asset.toJsonObject());
-            	}
-                
-                rootObject.add("images", imagesArray);
-                
-                FileOutputStream fos = null;
-                try {
-                    fos = new FileOutputStream(parent.getAbsolutePath() 
-                    		+ "/PNG/iOS/Images.xcassets/"
-                    		+ name 
-                    		+ ".imageset/Contents.json");
-                    PrintWriter writer = new PrintWriter(fos);
-                    writer.write(rootObject.toString());
-
-                    writer.close();
-                } catch (FileNotFoundException e) {
-                    e.printStackTrace();
-                    System.out.println("Couldn't save");
-                }
-            }
-            
-            
-            
             this.operation.setStatus(OperationStatus.FINISH);
             this.publish(this.operation);
         } catch (IOException e) {

@@ -22,7 +22,7 @@
 
   <groupId>gg.playneta</groupId>
   <artifactId>resizer</artifactId>
-  <version>1.0-SNAPSHOT</version>
+  <version>1.1</version>
 
   <name>resizer</name>
   <!-- FIXME change it to the project's website -->
@@ -30,8 +30,8 @@
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <maven.compiler.source>1.7</maven.compiler.source>
-    <maven.compiler.target>1.7</maven.compiler.target>
+    <maven.compiler.source>1.8</maven.compiler.source>
+    <maven.compiler.target>1.8</maven.compiler.target>
   </properties>
 
   <dependencies>
@@ -41,13 +41,11 @@
       <version>4.11</version>
       <scope>test</scope>
     </dependency>
-    <!-- https://mvnrepository.com/artifact/com.google.code.gson/gson -->
     <dependency>
       <groupId>com.google.code.gson</groupId>
       <artifactId>gson</artifactId>
-      <version>2.8.5</version>
+      <version>2.2.4</version>
     </dependency>
-
   </dependencies>
 
   <build>
@@ -73,6 +71,15 @@
         <plugin>
           <artifactId>maven-jar-plugin</artifactId>
           <version>3.0.2</version>
+          <configuration>
+            <archive>
+              <manifest>
+                <addClasspath>true</addClasspath>
+                <classpathPrefix>lib/</classpathPrefix>
+                <mainClass>net.redwarp.tool.resizer.Main</mainClass>
+              </manifest>
+            </archive>
+          </configuration>
         </plugin>
         <plugin>
           <artifactId>maven-install-plugin</artifactId>
