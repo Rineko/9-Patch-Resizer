@@ -89,8 +89,6 @@ public class ImageScaler extends SwingWorker<Void, Operation> {
             //replace dashes and spaces with underscore
             name = name.replace("-", "_");
             name = name.replace(" ", "_");
-            //to lowercase
-            name = name.toLowerCase(Locale.getDefault());
 
             List<ScreenDensity> densityListAndroid = ScreenDensity
                     .getSupportedAndroidScreenDensity();

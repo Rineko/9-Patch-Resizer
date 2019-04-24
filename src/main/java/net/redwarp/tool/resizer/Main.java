@@ -59,7 +59,7 @@ public class Main {
 				Localization.get("app_name"));
 		if (args.length > 0) {
 			StatusListener l = new StatusListener(args.length);
-			ArrayList<FileProcessor> processors = new ArrayList<FileProcessor>();
+			ArrayList<FileProcessor> processors = new ArrayList<>();
 
 			for (String s : args) {
 				processors.add(new FileProcessor(s, l));
